@@ -58,16 +58,18 @@ const MAX_ROUND: Round = Round {
     blue: 14,
 };
 
+impl Round {
+    fn is_valid(&self) -> bool {
+        self.red <= MAX_ROUND.red && self.green <= MAX_ROUND.green && self.blue <= MAX_ROUND.blue
+    }
+}
+
 fn part1(input: &str) -> u32 {
     input
         .lines()
         .map(Game::from)
         .filter_map(|game| {
-            if game.rounds.iter().any(|round| {
-                round.red > MAX_ROUND.red
-                    || round.green > MAX_ROUND.green
-                    || round.blue > MAX_ROUND.blue
-            }) {
+            if game.rounds.iter().any(|round| !round.is_valid()) {
                 None
             } else {
                 Some(game.id)
