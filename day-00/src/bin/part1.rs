@@ -14,6 +14,6 @@ mod tests {
 
     #[test]
     fn example() {
-        assert_eq!(part1(include_str!("example1.txt")), "example1");
+        assert_eq!(part1(include_str!("example.txt")), "example");
     }
 }
