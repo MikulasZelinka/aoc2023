@@ -16,7 +16,6 @@ struct Number {
 }
 
 struct Symbol {
-    value: char,
     row: usize,
     column: usize,
 }
@@ -34,7 +33,6 @@ fn part1(input: &str) -> u32 {
         line.chars().enumerate().for_each(|(column, character)| {
             if character != '.' && !character.is_numeric() {
                 symbols.push(Symbol {
-                    value: character,
                     row: line_number,
                     column,
                 });
