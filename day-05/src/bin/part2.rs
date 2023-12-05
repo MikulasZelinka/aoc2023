@@ -28,6 +28,9 @@ fn part2(input: &str) -> u64 {
     }
     seeds = expanded_seeds;
 
+    // 1_917_300_386 seeds
+    dbg!(seeds.len());
+
     let lines = lines.collect::<Vec<_>>();
     let map_segments: Vec<&[&str]> = lines
         .split(|line| line.is_empty())
