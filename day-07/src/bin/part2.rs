@@ -4,8 +4,6 @@ fn main() {
     let input = include_str!("./input.txt");
     let output = part2(input);
     dbg!(output);
-    // 248722222
-    // too low
 }
 
 const CARDS: [char; 13] = [
@@ -36,11 +34,16 @@ impl Hand {
 
 impl Hand {
     fn most_common(&self) -> Vec<u32> {
-        let mut top_two: Vec<u32> = Counter::init(self.cards)
+        let mut top_two: Vec<u32> = Counter::init(self.cards.iter().filter(|&c| *c != 'J'))
             .k_most_common_ordered(2)
             .iter()
             .map(|(_char, count)| *count)
             .collect();
+
+        if top_two.is_empty() {
+            // this covers the all Js case
+            top_two.push(0);
+        }
 
         // add the number of Js to the top count
         top_two[0] += self.cards.iter().filter(|&c| *c == 'J').count() as u32;
