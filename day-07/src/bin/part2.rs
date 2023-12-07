@@ -4,10 +4,12 @@ fn main() {
     let input = include_str!("./input.txt");
     let output = part2(input);
     dbg!(output);
+    // 248722222
+    // too low
 }
 
 const CARDS: [char; 13] = [
-    '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A',
+    'J', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'Q', 'K', 'A',
 ];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,11 +36,16 @@ impl Hand {
 
 impl Hand {
     fn most_common(&self) -> Vec<u32> {
-        Counter::init(self.cards)
+        let mut top_two: Vec<u32> = Counter::init(self.cards)
             .k_most_common_ordered(2)
             .iter()
             .map(|(_char, count)| *count)
-            .collect()
+            .collect();
+
+        // add the number of Js to the top count
+        top_two[0] += self.cards.iter().filter(|&c| *c == 'J').count() as u32;
+        top_two[0] = top_two[0].min(5);
+        top_two
     }
 
     fn card_ranks(&self) -> Vec<usize> {
@@ -86,10 +93,16 @@ mod tests {
     #[test]
     fn test_hand_ordering() {
         let hand1 = Hand::from("32T3K 765");
-        let hand2 = Hand::from("KTJJT 220");
-        let hand3 = Hand::from("KK677 28");
-        let hand4 = Hand::from("T55J5 684");
-        let hand5 = Hand::from("QQQJA 483");
+        let hand2 = Hand::from("KK677 28");
+        let hand3 = Hand::from("T55J5 684");
+        let hand4 = Hand::from("QQQJA 483");
+        let hand5 = Hand::from("KTJJT 220");
+
+        dbg!(hand1.most_common());
+        dbg!(hand2.most_common());
+        dbg!(hand3.most_common());
+        dbg!(hand4.most_common());
+        dbg!(hand5.most_common());
 
         assert!(hand1 < hand2);
         assert!(hand2 < hand3);
@@ -99,6 +112,6 @@ mod tests {
 
     #[test]
     fn example() {
-        assert_eq!(part2(include_str!("example.txt")), 6440);
+        assert_eq!(part2(include_str!("example.txt")), 5905);
     }
 }
