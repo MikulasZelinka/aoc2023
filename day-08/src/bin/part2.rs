@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use indicatif::{ProgressBar, ProgressStyle};
+use num::integer;
 
 fn main() {
     let input = include_str!("./input.txt");
@@ -35,10 +36,16 @@ fn part2(input: &str) -> usize {
         .expect("valid style");
     bar.set_style(style);
 
+    // unfortunately, a simple LCM of steps_until_first_z is the answer for all AoC examples/inputs
+    // but obviously, it doesn't work in general
+    // ...many happy coincidences!
+    // https://www.reddit.com/r/adventofcode/comments/18dfpub/comment/kch1h0r
+    let mut steps_until_first_z = vec![0usize; current_nodes.len()];
+
     for (i, instruction) in instructions.chars().cycle().enumerate() {
         let mut next_nodes: Vec<&str> = vec![];
 
-        for current_node in current_nodes {
+        for (j, current_node) in current_nodes.iter().enumerate() {
             let (left, right) = network.get(current_node).expect("current node exists");
             let next_node = match instruction {
                 'L' => left,
@@ -46,8 +53,19 @@ fn part2(input: &str) -> usize {
                 _ => panic!("unknown instruction: {}", instruction),
             };
 
+            if next_node.ends_with('Z') {
+                steps_until_first_z[j] = i + 1;
+                dbg!(&steps_until_first_z);
+            }
+
             // dbg!(i + 1, instruction, current_node, next_node);
             next_nodes.push(next_node);
+        }
+
+        if steps_until_first_z.iter().all(|steps| *steps != 0) {
+            return steps_until_first_z
+                .iter()
+                .fold(1, |lcm, num| integer::lcm(lcm, *num));
         }
 
         if next_nodes.iter().all(|node| node.ends_with('Z')) {
