@@ -1,14 +1,6 @@
-[gd_scene load_steps=3 format=3 uid="uid://lg7k3w42bpbm"]
+[gd_scene load_steps=2 format=3 uid="uid://lg7k3w42bpbm"]
 
 [ext_resource type="Script" path="res://world.gd" id="1_uyfyo"]
-[ext_resource type="Texture2D" uid="uid://0ep3d703smmo" path="res://icon.svg" id="1_yka70"]
 
 [node name="World" type="Node2D"]
 script = ExtResource("1_uyfyo")
-
-[node name="Animal" type="CharacterBody2D" parent="."]
-position = Vector2(481, 304)
-motion_mode = 1
-
-[node name="Sprite2D" type="Sprite2D" parent="Animal"]
-texture = ExtResource("1_yka70")

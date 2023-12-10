@@ -14,9 +14,17 @@ const valid_neighbours = {
 }
 
 func _ready():
-	assert(part1("res://example1.txt") == 4)
-	assert(part1("res://example2.txt") == 8)
-	print(part1("res://input.txt"))
+		
+	assert(part1("res://example1.txt")[2] == 4)
+	assert(part1("res://example2.txt")[2] == 8)
+	print(part1("res://input.txt")[2])
+	
+	assert(part2("res://example3.txt") == 4)
+	assert(part2("res://example4.txt") == 8)
+	assert(part2("res://example5.txt") == 10)
+	print(part2("res://input.txt"))
+	
+	
 	
 
 func read_file(file_path):
@@ -107,6 +115,61 @@ func part1(file_path):
 	
 #	print(len(pipe_path), pipe_path)
 	
+	return [coords_to_char, pipe_path, len(pipe_path) / 2]
 	
-	return len(pipe_path) / 2
-
+func part2(file_path):
+	var part1_results = part1(file_path)
+	var coords_to_char = part1_results[0]
+	var pipe_path = part1_results[1]
+	
+	
+	var dimensions = coords_to_char.keys().max()
+#	print("coords to char: ", coords_to_char)
+#	print(dimensions)
+#	print("pipe path: ", pipe_path.keys())
+	
+	var rows = dimensions[0]
+	var cols = dimensions[1]
+	
+	var num_inside_loop = 0
+	
+	for row in range(1, rows + 1):
+		var inside_loop = false
+		var start_corner = null
+		
+		# only add candidates if we encounter a pipe cell before the end of the line
+		var num_candidates = 0
+		
+		for col in range(1, cols + 1):
+			var current_position = [row, col]
+			
+			
+			var char = coords_to_char.get(current_position)
+			
+			if inside_loop and !pipe_path.has(current_position):
+				print(current_position, ": ", char)
+				num_candidates += 1
+				continue
+			
+			if !pipe_path.has(current_position):
+				# we can simply ignore pipes that aren't a part of the loop
+				continue
+			else:
+				num_inside_loop += num_candidates
+				num_candidates = 0
+				
+			match char:
+				"|":
+					inside_loop = not inside_loop
+				"F", "L":
+					start_corner = char
+				"7":
+					if start_corner == "L":
+						inside_loop = not inside_loop
+				"J":
+					if start_corner == "F":
+						inside_loop = not inside_loop
+					
+				
+	
+	return num_inside_loop
