@@ -4,6 +4,8 @@ Python because this was done while teaching a Python class.
 This most naive solution unfortunately still finishes in under two minutes for part 2.
 """
 
+from pathlib import Path
+
 import numpy as np
 from tqdm import tqdm
 
@@ -15,7 +17,7 @@ def compute_distance(T, hold_time):
 def solve(input_file_path, part="part1"):
     print(input_file_path, part)
 
-    with open(input_file_path) as f:
+    with open(Path(__file__).parent / input_file_path) as f:
         if part == "part1":
             times = [int(x) for x in f.readline().split()[1:]]
             records = [int(x) for x in f.readline().split()[1:]]
