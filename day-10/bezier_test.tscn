@@ -21,3 +21,16 @@ colour = Color(0.752941, 0.196078, 0.411765, 1)
 [node name="c1" parent="." instance=ExtResource("1_alx8f")]
 position = Vector2(244, 84)
 colour = Color(0.694118, 0.309804, 0.262745, 1)
+
+[node name="TimeSlider" type="HSlider" parent="."]
+offset_left = 311.0
+offset_top = 490.0
+offset_right = 663.0
+offset_bottom = 530.0
+value = 100.0
+
+[node name="CheckButton" type="CheckButton" parent="."]
+offset_left = 241.0
+offset_top = 498.0
+offset_right = 285.0
+offset_bottom = 522.0
