@@ -1,0 +1,23 @@
+[gd_scene load_steps=3 format=3 uid="uid://1yfu8xd2u4up"]
+
+[ext_resource type="PackedScene" uid="uid://e1c2l5bpupjc" path="res://bezier_point.tscn" id="1_alx8f"]
+[ext_resource type="Script" path="res://bezier_test.gd" id="1_hrsbl"]
+
+[node name="BezierTest" type="Node2D"]
+script = ExtResource("1_hrsbl")
+
+[node name="p0" parent="." instance=ExtResource("1_alx8f")]
+position = Vector2(111, 184)
+colour = Color(0.14902, 0.533333, 0.180392, 1)
+
+[node name="p1" parent="." instance=ExtResource("1_alx8f")]
+position = Vector2(317, 178)
+colour = Color(0.352941, 0.494118, 0.215686, 1)
+
+[node name="c0" parent="." instance=ExtResource("1_alx8f")]
+position = Vector2(75, 79)
+colour = Color(0.752941, 0.196078, 0.411765, 1)
+
+[node name="c1" parent="." instance=ExtResource("1_alx8f")]
+position = Vector2(244, 84)
+colour = Color(0.694118, 0.309804, 0.262745, 1)

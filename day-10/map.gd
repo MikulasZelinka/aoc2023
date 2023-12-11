@@ -13,6 +13,8 @@ const valid_neighbours = {
 	
 }
 
+
+
 func _ready():
 		
 	assert(part1("res://example1.txt")[2] == 4)
@@ -23,9 +25,7 @@ func _ready():
 	assert(part2("res://example4.txt") == 8)
 	assert(part2("res://example5.txt") == 10)
 	print(part2("res://input.txt"))
-	
-	
-	
+
 
 func read_file(file_path):
 	# https://docs.godotengine.org/en/stable/classes/class_fileaccess.html
@@ -45,10 +45,10 @@ func map_str_to_dict(map: String):
 	var row = 1
 	for line in lines:
 		var col = 1
-		for char in line:
-			coords_to_char[[row, col]] = char
+		for c in line:
+			coords_to_char[[row, col]] = c
 			
-			if char == "S":
+			if c == "S":
 				starting_position = [row, col]
 			
 			col += 1
