@@ -2,7 +2,7 @@ use itertools::Itertools;
 
 fn main() {
     let input = include_str!("./input.txt");
-    let output = part1(input);
+    let output = part1(input, 1);
     dbg!(output);
 }
 
@@ -12,7 +12,7 @@ struct Pos {
     y: usize,
 }
 
-fn part1(input: &str) -> usize {
+pub fn part1(input: &str, expansion: usize) -> usize {
     let mut galaxies: Vec<Pos> = vec![];
     let mut x_max = 0;
     let mut y_max = 0;
@@ -65,11 +65,13 @@ fn part1(input: &str) -> usize {
         distance += empty_cols[g1.x.min(g2.x)..g1.x.max(g2.x)]
             .iter()
             .filter(|b| **b)
-            .count();
+            .count()
+            * expansion;
         distance += empty_rows[g1.y.min(g1.y)..g1.y.max(g2.y)]
             .iter()
             .filter(|b| **b)
-            .count();
+            .count()
+            * expansion;
         sum_of_lengths += distance;
     }
 
@@ -82,6 +84,6 @@ mod tests {
 
     #[test]
     fn example() {
-        assert_eq!(part1(include_str!("example.txt")), 374);
+        assert_eq!(part1(include_str!("example.txt"), 1), 374);
     }
 }
