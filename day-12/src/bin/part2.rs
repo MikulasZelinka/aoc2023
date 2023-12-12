@@ -1,5 +1,6 @@
+// use cached::proc_macro::cached;
+// use cached::UnboundCache;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use std::iter::zip;
 
 use rayon::{iter::ParallelIterator, str::ParallelString};
 
@@ -8,135 +9,87 @@ fn main() {
     let output = part2(input);
     dbg!(output);
 }
-
-fn arrangements(springs: &[char], target_groups: &[usize], total: u32, bar: &ProgressBar) -> u32 {
-    let current_groups = springs
-        .split(|c| *c != '#')
-        .filter_map(|group| {
-            if group.is_empty() {
-                None
-            } else {
-                Some(group.len())
-            }
-        })
-        .collect::<Vec<usize>>();
-
-    if current_groups == target_groups {
-        bar.inc(1);
-        return 1;
-    }
-    if !springs.contains(&'?') {
-        // dbg!(current_groups);
-        return 0;
-    }
-    // max spring group is larger than max group:
-    if current_groups.iter().max() > target_groups.iter().max() {
-        return 0;
-    }
-
-    let mut current_groups = current_groups;
-    current_groups.sort();
-    current_groups.reverse();
-    let mut groups_sorted = target_groups.to_vec();
-    groups_sorted.sort();
-    groups_sorted.reverse();
-    if zip(current_groups.iter(), groups_sorted.iter())
-        .map(|(current_size, target_size)| current_size > target_size)
-        .any(|b| b)
-    {
-        return 0;
-    }
-
-    // not enough '?' and '#' to fill the groups:
-    if current_groups.iter().sum::<usize>() + springs.iter().filter(|&&c| c == '?').count()
-        < target_groups.iter().sum::<usize>()
-    {
-        return 0;
-    }
-
-    // check if the prefix without '?' is already larger than the target
-    let binding = [&['.'], springs].concat();
-    let current_fixed_springs = binding
-        .split(|c| *c == '?')
-        .find(|group| !group.is_empty())
-        .expect("fixed prefix");
-    let current_fixed_groups = current_fixed_springs
-        .split(|c| *c == '.')
-        .filter_map(|group| {
-            if group.is_empty() {
-                None
-            } else {
-                Some(group.len())
-            }
-        })
-        .collect::<Vec<usize>>();
-
-    // exclude last group because it is not complete (contains '?')
-    let num_groups_without_last = current_fixed_groups
-        .len()
-        .min(target_groups.len())
-        .saturating_sub(1);
-    // check if so far we have all groups correct
-    for i in 0..num_groups_without_last {
-        if current_fixed_groups[i] != target_groups[i] {
-            return 0;
+// #[cached(
+//     type = "UnboundCache<(), u32>",
+//     create = "{ UnboundCache::new() }",
+//     convert = r#"{ format!("{:?}-{:?}-{:?}", springs, target_groups, num_completed_groups,) }"#
+// )]
+fn num_arrangements(
+    springs: &[char],
+    groups: &[usize],
+    num_completed_groups: usize,
+    current_group_len: usize,
+    _bar: &ProgressBar,
+) -> u32 {
+    if springs.is_empty() {
+        // special case, handle if the whole spring sequence just ended and we just got a valid arrangement
+        // altneratively, we could just add a '.' to the end of the spring sequence
+        if num_completed_groups == groups.len() - 1
+            && current_group_len == groups[num_completed_groups]
+        {
+            return 1;
         }
+
+        return (num_completed_groups == groups.len()) as u32;
     }
 
-    // let all_groups =
-    //     springs.split(|c| *c == '.').filter_map(
-    //         |group| {
-    //             if group.is_empty() {
-    //                 None
-    //             } else {
-    //                 Some(group)
-    //             }
-    //         },
-    //     );
+    let (current_spring, next_springs) = (springs[0], &springs[1..]);
 
-    // let fuzzy_groups: Vec<&[char]> = all_groups
-    //     .skip_while(|group| !group.contains(&'?'))
-    //     .collect();
+    match current_spring {
+        // '.' means that a group has ended (if it existed)
+        '.' => {
+            match current_group_len {
+                // no group to end, continue
+                0 => num_arrangements(
+                    next_springs,
+                    groups,
+                    num_completed_groups,
+                    current_group_len,
+                    _bar,
+                ),
+                // successfully completed a group
+                n if n == groups[num_completed_groups] => {
+                    num_arrangements(&springs[1..], groups, num_completed_groups + 1, 0, _bar)
+                }
+                // group ended prematurely
+                _ => 0,
+            }
+        }
+        // '#' means that a group has started or is continuing
+        '#' => {
+            if num_completed_groups == groups.len() {
+                // too many groups
+                0
+            } else {
+                num_arrangements(
+                    &springs[1..],
+                    groups,
+                    num_completed_groups,
+                    current_group_len + 1,
+                    _bar,
+                )
+            }
+        }
 
-    // let target_group_sizes_left = target_groups[num_groups_without_last..].to_vec();
+        '?' => {
+            // recursively try both possibilities by prepending '.' and '#'
+            num_arrangements(
+                &[&['.'], next_springs].concat(),
+                groups,
+                num_completed_groups,
+                current_group_len,
+                _bar,
+            ) + num_arrangements(
+                &[&['#'], next_springs].concat(),
+                groups,
+                num_completed_groups,
+                current_group_len,
+                _bar,
+            )
+        }
 
-    // if fuzzy_groups
-    //     .iter()
-    //     .map(|group| group.len())
-    //     .max()
-    //     .expect("max fuzzy group size")
-    //     < *target_group_sizes_left
-    //         .iter()
-    //         .max()
-    //         .expect("max target group size")
-    // {
-    //     return 0;
-    // }
-
-    // if fuzzy_groups.iter().map(|group| group.len()).sum::<usize>()
-    //     < target_group_sizes_left.iter().sum::<usize>()
-    // {
-    //     return 0;
-    // }
-
-    // replace the first '?' with either '.' or '#'
-    let first_question_mark = springs.iter().position(|&c| c == '?').expect("?");
-
-    let springs_dot = {
-        let mut springs_dot = springs.to_vec();
-        springs_dot[first_question_mark] = '.';
-        springs_dot
-    };
-
-    let springs_hash = {
-        let mut springs_hash = springs.to_vec();
-        springs_hash[first_question_mark] = '#';
-        springs_hash
-    };
-
-    total
-        + arrangements(&springs_hash, target_groups, total, bar)
-        + arrangements(&springs_dot, target_groups, total, bar)
+        _ => unreachable!(),
+    }
 }
 
 fn parse_line(line: &str) -> (Vec<char>, Vec<usize>) {
@@ -162,7 +115,8 @@ fn part2(input: &str) -> u32 {
     let total_bar = multi_bar.add(total_bar);
 
     input
-        .par_lines()
+        // .par_lines()
+        .lines()
         .map(|line| {
             let bar = ProgressBar::new(0);
 
@@ -177,7 +131,7 @@ fn part2(input: &str) -> u32 {
             bar.tick();
 
             let (springs, groups) = parse_line(line);
-            let result = arrangements(&springs, &groups, 0, &bar);
+            let result = num_arrangements(&springs, &groups, 0, 0, &bar);
             bar.println(format!("{}: {}", line, result));
 
             total_bar.inc(1);
@@ -192,18 +146,6 @@ mod tests {
 
     #[test]
     fn example() {
-        // let lines: Vec<(Vec<char>, Vec<usize>)> = include_str!("example.txt")
-        //     .lines()
-        //     .map(parse_line)
-        //     .collect();
-
-        // assert_eq!(arrangements(&lines[0].0, &lines[0].1, 0), 1);
-        // assert_eq!(arrangements(&lines[1].0, &lines[1].1, 0), 16384);
-        // assert_eq!(arrangements(&lines[2].0, &lines[2].1, 0), 1);
-        // assert_eq!(arrangements(&lines[3].0, &lines[3].1, 0), 16);
-        // assert_eq!(arrangements(&lines[4].0, &lines[4].1, 0), 2500);
-        // assert_eq!(arrangements(&lines[5].0, &lines[5].1, 0), 506250);
-
         assert_eq!(part2(include_str!("example.txt")), 525152);
     }
 }
