@@ -11,7 +11,6 @@ struct Round {
 }
 
 struct Game {
-    id: u32,
     rounds: Vec<Round>,
 }
 
@@ -39,30 +38,14 @@ impl From<&str> for Round {
 // implement from &str for Game
 impl From<&str> for Game {
     fn from(s: &str) -> Self {
-        let (game_info, rounds_info) = s.split_once(':').expect("Game <id>: <rounds_data>");
-        let id: u32 = game_info
-            .split_once(' ')
-            .expect("Game <id>")
-            .1
-            .parse()
-            .expect("<id> is a number");
+        let rounds_info = s.split_once(':').expect("Game <id>: <rounds_data>").1;
 
         let rounds = rounds_info.split(';').map(Round::from).collect();
-        Game { id, rounds }
+        Game { rounds }
     }
 }
 
-const MAX_ROUND: Round = Round {
-    red: 12,
-    green: 13,
-    blue: 14,
-};
-
 impl Round {
-    fn is_valid(&self) -> bool {
-        self.red <= MAX_ROUND.red && self.green <= MAX_ROUND.green && self.blue <= MAX_ROUND.blue
-    }
-
     fn power(&self) -> u32 {
         self.red * self.green * self.blue
     }
