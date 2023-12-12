@@ -1,5 +1,5 @@
-// use cached::proc_macro::cached;
-// use cached::UnboundCache;
+use cached::proc_macro::cached;
+use cached::UnboundCache;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 
 use rayon::{iter::ParallelIterator, str::ParallelString};
@@ -9,11 +9,27 @@ fn main() {
     let output = part2(input);
     dbg!(output);
 }
-// #[cached(
-//     type = "UnboundCache<(), u32>",
-//     create = "{ UnboundCache::new() }",
-//     convert = r#"{ format!("{:?}-{:?}-{:?}", springs, target_groups, num_completed_groups,) }"#
-// )]
+
+type CachedFn = (Vec<char>, Vec<usize>, usize);
+
+fn num_arrangements_to_cacheable(
+    springs: &[char],
+    groups: &[usize],
+    num_completed_groups: usize,
+    current_group_len: usize,
+) -> CachedFn {
+    (
+        springs.to_vec(),
+        groups[num_completed_groups..].to_vec(),
+        current_group_len,
+    )
+}
+
+#[cached(
+    type = "UnboundCache<CachedFn, u32>",
+    create = "{ UnboundCache::new() }",
+    convert = r#"{ num_arrangements_to_cacheable(springs, groups, num_completed_groups, current_group_len) }"#
+)]
 fn num_arrangements(
     springs: &[char],
     groups: &[usize],
@@ -27,10 +43,14 @@ fn num_arrangements(
         if num_completed_groups == groups.len() - 1
             && current_group_len == groups[num_completed_groups]
         {
+            _bar.inc(1);
             return 1;
         }
-
-        return (num_completed_groups == groups.len()) as u32;
+        let result = num_completed_groups == groups.len();
+        if result {
+            _bar.inc(1);
+        }
+        return result as u32;
     }
 
     let (current_spring, next_springs) = (springs[0], &springs[1..]);
