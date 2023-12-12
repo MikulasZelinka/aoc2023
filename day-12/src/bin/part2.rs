@@ -10,43 +10,20 @@ fn main() {
     dbg!(output);
 }
 
-type CachedFn = (Vec<char>, Vec<usize>, usize);
-
-fn num_arrangements_to_cacheable(
-    springs: &[char],
-    groups: &[usize],
-    num_completed_groups: usize,
-    current_group_len: usize,
-) -> CachedFn {
-    (
-        springs.to_vec(),
-        groups[num_completed_groups..].to_vec(),
-        current_group_len,
-    )
-}
-
 #[cached(
-    type = "UnboundCache<CachedFn, usize>",
+    type = "UnboundCache<(Vec<char>, Vec<usize>, usize), usize>",
     create = "{ UnboundCache::new() }",
-    convert = r#"{ num_arrangements_to_cacheable(springs, groups, num_completed_groups, current_group_len) }"#
+    convert = r#"{ (springs.clone(), groups.clone(), current_group_len) }"#
 )]
 fn num_arrangements(
-    springs: &[char],
-    groups: &[usize],
-    num_completed_groups: usize,
+    springs: Vec<char>,
+    groups: Vec<usize>,
     current_group_len: usize,
     _bar: &ProgressBar,
 ) -> usize {
     if springs.is_empty() {
-        // special case, handle if the whole spring sequence just ended and we just got a valid arrangement
-        // altneratively, we could just add a '.' to the end of the spring sequence
-        if num_completed_groups == groups.len() - 1
-            && current_group_len == groups[num_completed_groups]
-        {
-            _bar.inc(1);
-            return 1;
-        }
-        let result = num_completed_groups == groups.len();
+        let result = (groups.is_empty() && current_group_len == 0)
+            || (groups.len() == 1 && groups[0] == current_group_len);
         if result {
             _bar.inc(1);
         }
@@ -60,16 +37,10 @@ fn num_arrangements(
         '.' => {
             match current_group_len {
                 // no group to end, continue
-                0 => num_arrangements(
-                    next_springs,
-                    groups,
-                    num_completed_groups,
-                    current_group_len,
-                    _bar,
-                ),
+                0 => num_arrangements(next_springs.to_vec(), groups, current_group_len, _bar),
                 // successfully completed a group
-                n if n == groups[num_completed_groups] => {
-                    num_arrangements(&springs[1..], groups, num_completed_groups + 1, 0, _bar)
+                n if n == groups[0] => {
+                    num_arrangements(springs[1..].to_vec(), groups[1..].to_vec(), 0, _bar)
                 }
                 // group ended prematurely
                 _ => 0,
@@ -77,32 +48,24 @@ fn num_arrangements(
         }
         // '#' means that a group has started or is continuing
         '#' => {
-            if num_completed_groups == groups.len() {
+            if groups.is_empty() {
                 // too many groups
                 0
             } else {
-                num_arrangements(
-                    &springs[1..],
-                    groups,
-                    num_completed_groups,
-                    current_group_len + 1,
-                    _bar,
-                )
+                num_arrangements(springs[1..].to_vec(), groups, current_group_len + 1, _bar)
             }
         }
 
         '?' => {
             // recursively try both possibilities by prepending '.' and '#'
             num_arrangements(
-                &[&['.'], next_springs].concat(),
-                groups,
-                num_completed_groups,
+                [&['.'], next_springs].concat(),
+                groups.clone(),
                 current_group_len,
                 _bar,
             ) + num_arrangements(
-                &[&['#'], next_springs].concat(),
+                [&['#'], next_springs].concat(),
                 groups,
-                num_completed_groups,
                 current_group_len,
                 _bar,
             )
@@ -151,7 +114,7 @@ fn part2(input: &str) -> usize {
             bar.tick();
 
             let (springs, groups) = parse_line(line);
-            let result = num_arrangements(&springs, &groups, 0, 0, &bar);
+            let result = num_arrangements(springs, groups, 0, &bar);
             bar.println(format!("{}: {}", line, result));
 
             total_bar.inc(1);
@@ -169,6 +132,7 @@ mod tests {
         assert_eq!(part2(include_str!("example.txt")), 525152);
 
         // 1087615125 is too low (was caused by an overflow)
-        assert!(part2(include_str!("input.txt")) > 1087615125);
+        // assert!(part2(include_str!("input.txt")) > 1087615125);
+        assert_eq!(part2(include_str!("input.txt")), 7732028747925);
     }
 }
