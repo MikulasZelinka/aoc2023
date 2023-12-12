@@ -70,12 +70,55 @@ fn arrangements(springs: &[char], target_groups: &[usize], total: u32, bar: &Pro
             }
         })
         .collect::<Vec<usize>>();
-    if zip(current_fixed_groups.iter(), target_groups.iter())
-        .map(|(current_size, target_size)| current_size > target_size)
-        .any(|b| b)
-    {
-        return 0;
+
+    // exclude last group because it is not complete (contains '?')
+    let num_groups_without_last = current_fixed_groups
+        .len()
+        .min(target_groups.len())
+        .saturating_sub(1);
+    // check if so far we have all groups correct
+    for i in 0..num_groups_without_last {
+        if current_fixed_groups[i] != target_groups[i] {
+            return 0;
+        }
     }
+
+    // let all_groups =
+    //     springs.split(|c| *c == '.').filter_map(
+    //         |group| {
+    //             if group.is_empty() {
+    //                 None
+    //             } else {
+    //                 Some(group)
+    //             }
+    //         },
+    //     );
+
+    // let fuzzy_groups: Vec<&[char]> = all_groups
+    //     .skip_while(|group| !group.contains(&'?'))
+    //     .collect();
+
+    // let target_group_sizes_left = target_groups[num_groups_without_last..].to_vec();
+
+    // if fuzzy_groups
+    //     .iter()
+    //     .map(|group| group.len())
+    //     .max()
+    //     .expect("max fuzzy group size")
+    //     < *target_group_sizes_left
+    //         .iter()
+    //         .max()
+    //         .expect("max target group size")
+    // {
+    //     return 0;
+    // }
+
+    // if fuzzy_groups.iter().map(|group| group.len()).sum::<usize>()
+    //     < target_group_sizes_left.iter().sum::<usize>()
+    // {
+    //     return 0;
+    // }
+
     // replace the first '?' with either '.' or '#'
     let first_question_mark = springs.iter().position(|&c| c == '?').expect("?");
 
