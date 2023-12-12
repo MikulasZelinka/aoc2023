@@ -2,7 +2,7 @@ use cached::proc_macro::cached;
 use cached::UnboundCache;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 
-use rayon::{iter::ParallelIterator, str::ParallelString};
+// use rayon::{iter::ParallelIterator, str::ParallelString};
 
 fn main() {
     let input = include_str!("./input.txt");
@@ -26,7 +26,7 @@ fn num_arrangements_to_cacheable(
 }
 
 #[cached(
-    type = "UnboundCache<CachedFn, u32>",
+    type = "UnboundCache<CachedFn, usize>",
     create = "{ UnboundCache::new() }",
     convert = r#"{ num_arrangements_to_cacheable(springs, groups, num_completed_groups, current_group_len) }"#
 )]
@@ -36,7 +36,7 @@ fn num_arrangements(
     num_completed_groups: usize,
     current_group_len: usize,
     _bar: &ProgressBar,
-) -> u32 {
+) -> usize {
     if springs.is_empty() {
         // special case, handle if the whole spring sequence just ended and we just got a valid arrangement
         // altneratively, we could just add a '.' to the end of the spring sequence
@@ -50,7 +50,7 @@ fn num_arrangements(
         if result {
             _bar.inc(1);
         }
-        return result as u32;
+        return result as usize;
     }
 
     let (current_spring, next_springs) = (springs[0], &springs[1..]);
@@ -114,7 +114,6 @@ fn num_arrangements(
 
 fn parse_line(line: &str) -> (Vec<char>, Vec<usize>) {
     let (springs, groups) = line.split_once(' ').expect("<springs> <groups>");
-    // let springs: Vec<char> = springs.chars().collect();
     let groups: Vec<usize> = groups
         .split(',')
         .map(|s| s.parse().expect("numbers"))
@@ -126,7 +125,7 @@ fn parse_line(line: &str) -> (Vec<char>, Vec<usize>) {
     )
 }
 
-fn part2(input: &str) -> u32 {
+fn part2(input: &str) -> usize {
     let multi_bar = MultiProgress::new();
 
     let num_lines = input.lines().count();
@@ -135,6 +134,7 @@ fn part2(input: &str) -> u32 {
     let total_bar = multi_bar.add(total_bar);
 
     input
+        // naivne line-by-line parallelization is slower due to caching
         // .par_lines()
         .lines()
         .map(|line| {
@@ -167,5 +167,8 @@ mod tests {
     #[test]
     fn example() {
         assert_eq!(part2(include_str!("example.txt")), 525152);
+
+        // 1087615125 is too low (was caused by an overflow)
+        assert!(part2(include_str!("input.txt")) > 1087615125);
     }
 }
