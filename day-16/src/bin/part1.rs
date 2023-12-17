@@ -48,7 +48,6 @@ fn part1(input: &str) -> usize {
         .lines()
         .map(|line| line.chars().collect::<Vec<_>>())
         .collect::<Vec<_>>();
-    // create a bool vec<vec> to track of identical shape
     let mut energised = vec![vec![false; grid[0].len()]; grid.len()];
 
     let mut seen_beams = HashSet::new();
@@ -139,7 +138,6 @@ fn part1(input: &str) -> usize {
         beams = new_beams;
         dbg!(&beams);
     }
-    // input.trim().to_string()
     energised.iter().flatten().filter(|&&e| e).count()
 }
 
