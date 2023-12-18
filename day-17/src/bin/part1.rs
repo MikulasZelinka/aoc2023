@@ -3,9 +3,10 @@ use std::{
     vec,
 };
 
+#[allow(dead_code)]
 fn main() {
     let input = include_str!("./input.txt");
-    let output = part1(input);
+    let output = part1(input, 1, 3);
     dbg!(output);
 }
 
@@ -46,7 +47,7 @@ impl PartialOrd for State {
     }
 }
 
-fn part1(input: &str) -> u32 {
+pub fn part1(input: &str, min_moves: isize, max_moves: isize) -> u32 {
     input.trim().to_string();
 
     let city: Vec<Vec<u32>> = input
@@ -83,7 +84,7 @@ fn part1(input: &str) -> u32 {
         }
 
         for direction in state.next_directions {
-            for move_length in 4..=10 {
+            for move_length in min_moves..=max_moves {
                 let (next_row, next_col) = match direction {
                     Direction::Up => (state.row - move_length, state.col),
                     Direction::Down => (state.row + move_length, state.col),
@@ -175,6 +176,6 @@ mod tests {
 
     #[test]
     fn example() {
-        assert_eq!(part1(include_str!("example.txt")), 102);
+        assert_eq!(part1(include_str!("example.txt"), 1, 3), 102);
     }
 }
