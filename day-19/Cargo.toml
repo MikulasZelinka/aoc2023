@@ -7,3 +7,14 @@ edition = "2021"
 
 [dependencies]
 indicatif = "0.17.7"
+
+# https://nnethercote.github.io/perf-book/build-configuration.html
+
+[build]
+rustflags = ["-C", "target-cpu=native"]
+
+[profile.release]
+codegen-units = 1
+lto = "off"
+panic = "abort"
+strip = "debuginfo"

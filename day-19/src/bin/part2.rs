@@ -66,7 +66,7 @@ impl From<&str> for Decision {
         match s {
             "A" => Decision::Accept,
             "R" => Decision::Reject,
-            _ => Decision::SendTo(s.to_string()),
+            _ => Decision::SendTo(s.into()),
         }
     }
 }
@@ -109,33 +109,36 @@ impl From<&str> for Rule {
 
 #[derive(Debug)]
 struct Workflow {
-    name: String,
     rules: Vec<Rule>,
 }
 
 impl From<&str> for Workflow {
     fn from(value: &str) -> Self {
-        let (name, rules) = value.split_once('{').expect("<name>:<rules>");
-        let rules = rules
+        let rules = value
             .trim_end_matches('}')
             .split(',')
             .map(|rule| rule.into())
             .collect();
-        Workflow {
-            name: name.to_string(),
-            rules,
-        }
+        Workflow { rules }
     }
 }
 
 fn take_decision(
-    workflows: &HashMap<String, Workflow>,
+    workflows: &HashMap<&str, Workflow>,
     decision: &Decision,
     part_from: Part,
     part_to: Part,
 ) -> usize {
     match decision {
         Decision::Accept => {
+            // println!(
+            //     "x: {:?}, a: {:?}, a: {:?}, s: {:?}",
+            //     part_from.x..=part_to.x,
+            //     part_from.m..=part_to.m,
+            //     part_from.a..=part_to.a,
+            //     part_from.s..=part_to.s
+            // );
+
             (1 + part_to.x - part_from.x)
                 * (1 + part_to.m - part_from.m)
                 * (1 + part_to.a - part_from.a)
@@ -144,7 +147,9 @@ fn take_decision(
         Decision::Reject => 0,
         Decision::SendTo(workflow_name) => num_accepted_combinations(
             workflows,
-            workflows.get(workflow_name).expect("valid workflow name"),
+            workflows
+                .get(workflow_name as &str)
+                .expect("valid workflow name"),
             0,
             part_from,
             part_to,
@@ -153,7 +158,7 @@ fn take_decision(
 }
 
 fn num_accepted_combinations(
-    workflows: &HashMap<String, Workflow>,
+    workflows: &HashMap<&str, Workflow>,
     current_workflow: &Workflow,
     current_rule_index: usize,
     part_from: Part,
@@ -247,16 +252,15 @@ fn num_accepted_combinations(
 }
 
 fn part2(input: &str) -> usize {
-    input.trim().to_string();
-
     let (workflow_input, _parts_input) = input
         .split_once("\n\n")
         .expect("<workflows> <empty line> <parts>");
 
-    let mut workflows: HashMap<String, Workflow> = HashMap::new();
+    let mut workflows: HashMap<&str, Workflow> = HashMap::new();
     for workflow in workflow_input.lines() {
+        let (name, workflow) = workflow.split_once('{').expect("<name>:<rules>");
         let workflow: Workflow = workflow.into();
-        workflows.insert(workflow.name.clone(), workflow);
+        workflows.insert(name, workflow);
     }
 
     // dbg!(&workflows);
