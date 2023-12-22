@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use indicatif::{ProgressBar, ProgressStyle};
+
 fn main() {
     let input = include_str!("./input.txt");
     let output = part2(input);
@@ -83,7 +85,7 @@ impl From<&str> for Part {
 
 // impl rating for a part, a sum of all values
 impl Part {
-    fn rating(&self) -> u32 {
+    fn _rating(&self) -> u32 {
         self.x.value() + self.m.value() + self.a.value() + self.s.value()
     }
 }
@@ -169,10 +171,10 @@ impl From<&str> for Workflow {
     }
 }
 
-fn part2(input: &str) -> u32 {
+fn part2(input: &str) -> u64 {
     input.trim().to_string();
 
-    let (workflow_input, parts_input) = input
+    let (workflow_input, _parts_input) = input
         .split_once("\n\n")
         .expect("<workflows> <empty line> <parts>");
 
@@ -182,71 +184,92 @@ fn part2(input: &str) -> u32 {
         workflows.insert(workflow.name.clone(), workflow);
     }
 
-    let parts: Vec<Part> = parts_input.lines().map(|part| part.into()).collect();
+    // Each of the four ratings (x, m, a, s) can have an integer value ranging from a minimum of 1 to a maximum of 4000. Of all possible distinct combinations of ratings, your job is to figure out which ones will be accepted.
 
-    dbg!(&workflows);
-    dbg!(&parts);
+    let mut combinations: u64 = 0;
+    let bar = ProgressBar::new(4000 * 4000 * 4000 * 4000_u64);
 
-    let mut sum_of_ratings = 0;
-    for part in parts {
-        // let mut current_workflow_name = "in";
-        let mut current_workflow = workflows.get("in").expect("valid workflow name");
-        let mut current_rule_index = 0;
+    let style = ProgressStyle::default_bar()
+        .template(
+            "[{elapsed_precise}] {bar:40.cyan/blue} {eta} remaining [{human_pos}/{human_len}] - speed: {per_sec}",
+        )
+        .expect("valid style");
 
-        loop {
-            let rule = current_workflow
-                .rules
-                .get(current_rule_index)
-                .expect("valid rule");
-            match rule {
-                Rule::Decision(decision) => match decision {
-                    Decision::Accept => {
-                        sum_of_ratings += part.rating();
-                        break;
-                    }
-                    Decision::Reject => break,
-                    Decision::SendTo(workflow_name) => {
-                        current_workflow =
-                            workflows.get(workflow_name).expect("valid workflow name");
-                        current_rule_index = 0;
-                    }
-                },
+    bar.set_style(style);
 
-                Rule::Condition(category, operator, decision) => {
-                    let value = match category {
-                        Category::X(value) => *value,
-                        Category::M(value) => *value,
-                        Category::A(value) => *value,
-                        Category::S(value) => *value,
+    for x in 1..=4000 {
+        for m in 1..=4000 {
+            for a in 1..=4000 {
+                for s in 1..=4000 {
+                    let part = Part {
+                        x: Category::X(x),
+                        m: Category::M(m),
+                        a: Category::A(a),
+                        s: Category::S(s),
                     };
-                    let part_value = match category {
-                        Category::X(_) => part.x.value(),
-                        Category::M(_) => part.m.value(),
-                        Category::A(_) => part.a.value(),
-                        Category::S(_) => part.s.value(),
-                    };
-                    if part_value.cmp(&value) == *operator {
-                        match decision {
-                            Decision::Accept => {
-                                sum_of_ratings += part.rating();
-                                break;
+                    let mut current_workflow = workflows.get("in").expect("valid workflow name");
+                    let mut current_rule_index = 0;
+
+                    loop {
+                        let rule = current_workflow
+                            .rules
+                            .get(current_rule_index)
+                            .expect("valid rule");
+                        match rule {
+                            Rule::Decision(decision) => match decision {
+                                Decision::Accept => {
+                                    combinations += 1;
+                                    break;
+                                }
+                                Decision::Reject => break,
+                                Decision::SendTo(workflow_name) => {
+                                    current_workflow =
+                                        workflows.get(workflow_name).expect("valid workflow name");
+                                    current_rule_index = 0;
+                                }
+                            },
+
+                            Rule::Condition(category, operator, decision) => {
+                                let value = match category {
+                                    Category::X(value) => *value,
+                                    Category::M(value) => *value,
+                                    Category::A(value) => *value,
+                                    Category::S(value) => *value,
+                                };
+                                let part_value = match category {
+                                    Category::X(_) => part.x.value(),
+                                    Category::M(_) => part.m.value(),
+                                    Category::A(_) => part.a.value(),
+                                    Category::S(_) => part.s.value(),
+                                };
+                                if part_value.cmp(&value) == *operator {
+                                    match decision {
+                                        Decision::Accept => {
+                                            combinations += 1;
+                                            break;
+                                        }
+                                        Decision::Reject => break,
+                                        Decision::SendTo(workflow_name) => {
+                                            current_workflow = workflows
+                                                .get(workflow_name)
+                                                .expect("valid workflow name");
+                                            current_rule_index = 0;
+                                        }
+                                    };
+                                } else {
+                                    current_rule_index += 1;
+                                }
                             }
-                            Decision::Reject => break,
-                            Decision::SendTo(workflow_name) => {
-                                current_workflow =
-                                    workflows.get(workflow_name).expect("valid workflow name");
-                                current_rule_index = 0;
-                            }
-                        };
-                    } else {
-                        current_rule_index += 1;
+                        }
                     }
+
+                    bar.inc(1);
                 }
             }
         }
     }
-
-    sum_of_ratings
+    bar.finish();
+    combinations
 }
 
 #[cfg(test)]
