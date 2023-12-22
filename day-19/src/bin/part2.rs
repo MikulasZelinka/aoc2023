@@ -128,6 +128,30 @@ impl From<&str> for Workflow {
     }
 }
 
+fn take_decision(
+    workflows: &HashMap<String, Workflow>,
+    decision: &Decision,
+    part_from: Part,
+    part_to: Part,
+) -> usize {
+    match decision {
+        Decision::Accept => {
+            (1 + part_to.x - part_from.x)
+                * (1 + part_to.m - part_from.m)
+                * (1 + part_to.a - part_from.a)
+                * (1 + part_to.s - part_from.s)
+        }
+        Decision::Reject => 0,
+        Decision::SendTo(workflow_name) => num_accepted_combinations(
+            workflows,
+            workflows.get(workflow_name).expect("valid workflow name"),
+            0,
+            part_from,
+            part_to,
+        ),
+    }
+}
+
 fn num_accepted_combinations(
     workflows: &HashMap<String, Workflow>,
     current_workflow: &Workflow,
@@ -143,22 +167,7 @@ fn num_accepted_combinations(
     // dbg!(part_from, part_to, rule);
 
     match rule {
-        Rule::Decision(decision) => match decision {
-            Decision::Accept => {
-                (1 + part_to.x - part_from.x)
-                    * (1 + part_to.m - part_from.m)
-                    * (1 + part_to.a - part_from.a)
-                    * (1 + part_to.s - part_from.s)
-            }
-            Decision::Reject => 0,
-            Decision::SendTo(workflow_name) => num_accepted_combinations(
-                workflows,
-                workflows.get(workflow_name).expect("valid workflow name"),
-                0,
-                part_from,
-                part_to,
-            ),
-        },
+        Rule::Decision(decision) => take_decision(workflows, decision, part_from, part_to),
 
         Rule::Condition(category, op, value, decision) => {
             // the condition has zero overlap with the parts
@@ -177,23 +186,7 @@ fn num_accepted_combinations(
                 || (*op == Ordering::Greater && &part_from[*category] > value)
             {
                 // always accept this rule, it must be matched
-
-                return match decision {
-                    Decision::Accept => {
-                        (1 + part_to.x - part_from.x)
-                            * (1 + part_to.m - part_from.m)
-                            * (1 + part_to.a - part_from.a)
-                            * (1 + part_to.s - part_from.s)
-                    }
-                    Decision::Reject => 0,
-                    Decision::SendTo(workflow_name) => num_accepted_combinations(
-                        workflows,
-                        workflows.get(workflow_name).expect("valid workflow name"),
-                        0,
-                        part_from,
-                        part_to,
-                    ),
-                };
+                take_decision(workflows, decision, part_from, part_to)
             } else {
                 // value is between part_from and part_to
                 // so we need to split the part into two parts
@@ -240,7 +233,6 @@ fn num_accepted_combinations(
                     (accepted_from, accepted_to, declined_from, declined_to) =
                         (declined_from, declined_to, accepted_from, accepted_to);
                 }
-                let (part_from, part_to) = (accepted_from, accepted_to);
 
                 return num_accepted_combinations(
                     workflows,
@@ -248,22 +240,7 @@ fn num_accepted_combinations(
                     current_rule_index + 1,
                     declined_from,
                     declined_to,
-                ) + match decision {
-                    Decision::Accept => {
-                        (1 + part_to.x - part_from.x)
-                            * (1 + part_to.m - part_from.m)
-                            * (1 + part_to.a - part_from.a)
-                            * (1 + part_to.s - part_from.s)
-                    }
-                    Decision::Reject => 0,
-                    Decision::SendTo(workflow_name) => num_accepted_combinations(
-                        workflows,
-                        workflows.get(workflow_name).expect("valid workflow name"),
-                        0,
-                        part_from,
-                        part_to,
-                    ),
-                };
+                ) + take_decision(workflows, decision, accepted_from, accepted_to);
             }
         }
     }
