@@ -1,6 +1,5 @@
+use std::cmp::Ordering;
 use std::collections::HashMap;
-
-use indicatif::{ProgressBar, ProgressStyle};
 
 fn main() {
     let input = include_str!("./input.txt");
@@ -8,100 +7,50 @@ fn main() {
     dbg!(output);
 }
 
-// Part structure looks like this:
-// {x=787,m=2655,a=1222,s=2876}
-// {x=1679,m=44,a=2067,s=496}
-// {x=2036,m=264,a=79,s=2244}
-// {x=2461,m=1339,a=466,s=291}
-// {x=2127,m=1623,a=2188,s=1013}
-
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 enum Category {
-    X(u32),
-    M(u32),
-    A(u32),
-    S(u32),
-}
-impl Category {
-    fn value(&self) -> u32 {
-        match self {
-            Category::X(value) => *value,
-            Category::M(value) => *value,
-            Category::A(value) => *value,
-            Category::S(value) => *value,
-        }
-    }
+    X,
+    M,
+    A,
+    S,
 }
 
 impl From<&str> for Category {
     fn from(s: &str) -> Self {
-        let (key, value) = s
-            .split_once(|c| c == '<' || c == '>' || c == '=')
-            .expect("<key>=<value>");
-        match key {
-            "x" => Category::X(value.parse().expect("X value is a number")),
-            "m" => Category::M(value.parse().expect("M value is a number")),
-            "a" => Category::A(value.parse().expect("A value is a number")),
-            "s" => Category::S(value.parse().expect("S value is a number")),
+        match s {
+            "x" => Category::X,
+            "m" => Category::M,
+            "a" => Category::A,
+            "s" => Category::S,
             _ => panic!("unknown key"),
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 struct Part {
-    x: Category,
-    m: Category,
-    a: Category,
-    s: Category,
+    x: usize,
+    m: usize,
+    a: usize,
+    s: usize,
 }
 
-impl From<&str> for Part {
-    fn from(s: &str) -> Self {
-        let parts = s.trim_start_matches('{').trim_end_matches('}').split(',');
+impl std::ops::Index<Category> for Part {
+    type Output = usize;
 
-        let mut x: Option<Category> = None;
-        let mut m: Option<Category> = None;
-        let mut a: Option<Category> = None;
-        let mut s: Option<Category> = None;
-
-        for part in parts {
-            let category: Category = part.trim().into();
-            match category {
-                Category::X(_) => x = Some(category),
-                Category::M(_) => m = Some(category),
-                Category::A(_) => a = Some(category),
-                Category::S(_) => s = Some(category),
-            }
-        }
-        Part {
-            x: x.expect("x is present"),
-            m: m.expect("m is present"),
-            a: a.expect("a is present"),
-            s: s.expect("s is present"),
+    fn index(&self, category: Category) -> &Self::Output {
+        match category {
+            Category::X => &self.x,
+            Category::M => &self.m,
+            Category::A => &self.a,
+            Category::S => &self.s,
         }
     }
 }
-
-// impl rating for a part, a sum of all values
-impl Part {
-    fn _rating(&self) -> u32 {
-        self.x.value() + self.m.value() + self.a.value() + self.s.value()
-    }
-}
-
-// Each workflow has a name and contains a list of rules; each rule specifies a condition and where to send the part if the condition is true. The first rule that matches the part being considered is applied immediately, and the part moves on to the destination described by the rule. (The last rule in each workflow has no condition and always applies if reached.)
-
-// Consider the workflow ex{x>10:one,m<20:two,a>30:R,A}. This workflow is named ex and contains four rules. If workflow ex were considering a specific part, it would perform the following steps in order:
-
-//     Rule "x>10:one": If the part's x is more than 10, send the part to the workflow named one.
-//     Rule "m<20:two": Otherwise, if the part's m is less than 20, send the part to the workflow named two.
-//     Rule "a>30:R": Otherwise, if the part's a is more than 30, the part is immediately rejected (R).
-//     Rule "A": Otherwise, because no other rules matched the part, the part is immediately accepted (A).
 
 #[derive(Debug)]
 enum Rule {
-    Condition(Category, std::cmp::Ordering, Decision),
+    Condition(Category, std::cmp::Ordering, usize, Decision),
     Decision(Decision),
 }
 
@@ -137,13 +86,21 @@ impl From<&str> for Rule {
                     panic!("unknown operator")
                 }
             };
-            let category = condition.trim().into();
+            let (category, value) = condition
+                .trim()
+                .split_once(operator)
+                .expect("<category><operator><value>");
             let operator = match operator {
                 "<" => std::cmp::Ordering::Less,
                 ">" => std::cmp::Ordering::Greater,
                 _ => panic!("unknown operator"),
             };
-            Rule::Condition(category, operator, decision.into())
+            Rule::Condition(
+                category.into(),
+                operator,
+                value.parse().expect("number"),
+                decision.into(),
+            )
         } else {
             Rule::Decision(s.into())
         }
@@ -171,7 +128,148 @@ impl From<&str> for Workflow {
     }
 }
 
-fn part2(input: &str) -> u64 {
+fn num_accepted_combinations(
+    workflows: &HashMap<String, Workflow>,
+    current_workflow: &Workflow,
+    current_rule_index: usize,
+    part_from: Part,
+    part_to: Part,
+) -> usize {
+    let rule = current_workflow
+        .rules
+        .get(current_rule_index)
+        .expect("valid rule");
+
+    // dbg!(part_from, part_to, rule);
+
+    match rule {
+        Rule::Decision(decision) => match decision {
+            Decision::Accept => {
+                (1 + part_to.x - part_from.x)
+                    * (1 + part_to.m - part_from.m)
+                    * (1 + part_to.a - part_from.a)
+                    * (1 + part_to.s - part_from.s)
+            }
+            Decision::Reject => 0,
+            Decision::SendTo(workflow_name) => num_accepted_combinations(
+                workflows,
+                workflows.get(workflow_name).expect("valid workflow name"),
+                0,
+                part_from,
+                part_to,
+            ),
+        },
+
+        Rule::Condition(category, op, value, decision) => {
+            // the condition has zero overlap with the parts
+            if (*op == Ordering::Less && value < &part_from[*category])
+                || (*op == Ordering::Greater && &part_to[*category] < value)
+            {
+                // just continue to the next rule, this can't be matched
+                num_accepted_combinations(
+                    workflows,
+                    current_workflow,
+                    current_rule_index + 1,
+                    part_from,
+                    part_to,
+                )
+            } else if (*op == Ordering::Less && value > &part_to[*category])
+                || (*op == Ordering::Greater && &part_from[*category] > value)
+            {
+                // always accept this rule, it must be matched
+
+                return match decision {
+                    Decision::Accept => {
+                        (1 + part_to.x - part_from.x)
+                            * (1 + part_to.m - part_from.m)
+                            * (1 + part_to.a - part_from.a)
+                            * (1 + part_to.s - part_from.s)
+                    }
+                    Decision::Reject => 0,
+                    Decision::SendTo(workflow_name) => num_accepted_combinations(
+                        workflows,
+                        workflows.get(workflow_name).expect("valid workflow name"),
+                        0,
+                        part_from,
+                        part_to,
+                    ),
+                };
+            } else {
+                // value is between part_from and part_to
+                // so we need to split the part into two parts
+                let mut middle_left = *value;
+                let mut middle_right = *value;
+                match op {
+                    Ordering::Less => middle_left -= 1,
+                    Ordering::Greater => middle_right += 1,
+                    _ => unreachable!(),
+                };
+
+                let left_side_from = part_from;
+                let mut left_side_to = part_to;
+
+                let mut right_side_from = part_from;
+                let right_side_to = part_to;
+
+                match category {
+                    Category::X => {
+                        left_side_to.x = middle_left;
+                        right_side_from.x = middle_right;
+                    }
+                    Category::M => {
+                        left_side_to.m = middle_left;
+                        right_side_from.m = middle_right;
+                    }
+                    Category::A => {
+                        left_side_to.a = middle_left;
+                        right_side_from.a = middle_right;
+                    }
+                    Category::S => {
+                        left_side_to.s = middle_left;
+                        right_side_from.s = middle_right;
+                    }
+                }
+
+                let mut accepted_from = left_side_from;
+                let mut accepted_to = left_side_to;
+
+                let mut declined_from = right_side_from;
+                let mut declined_to = right_side_to;
+
+                if *op == Ordering::Greater {
+                    (accepted_from, accepted_to, declined_from, declined_to) =
+                        (declined_from, declined_to, accepted_from, accepted_to);
+                }
+                let (part_from, part_to) = (accepted_from, accepted_to);
+
+                return num_accepted_combinations(
+                    workflows,
+                    current_workflow,
+                    current_rule_index + 1,
+                    declined_from,
+                    declined_to,
+                ) + match decision {
+                    Decision::Accept => {
+                        (1 + part_to.x - part_from.x)
+                            * (1 + part_to.m - part_from.m)
+                            * (1 + part_to.a - part_from.a)
+                            * (1 + part_to.s - part_from.s)
+                    }
+                    Decision::Reject => 0,
+                    Decision::SendTo(workflow_name) => num_accepted_combinations(
+                        workflows,
+                        workflows.get(workflow_name).expect("valid workflow name"),
+                        0,
+                        part_from,
+                        part_to,
+                    ),
+                };
+            }
+        }
+    }
+}
+
+fn part2(input: &str) -> usize {
     input.trim().to_string();
 
     let (workflow_input, _parts_input) = input
@@ -184,91 +282,26 @@ fn part2(input: &str) -> u64 {
         workflows.insert(workflow.name.clone(), workflow);
     }
 
-    // Each of the four ratings (x, m, a, s) can have an integer value ranging from a minimum of 1 to a maximum of 4000. Of all possible distinct combinations of ratings, your job is to figure out which ones will be accepted.
+    // dbg!(&workflows);
 
-    let mut combinations: u64 = 0;
-    let bar = ProgressBar::new(4000 * 4000 * 4000 * 4000_u64);
+    let combinations = num_accepted_combinations(
+        &workflows,
+        workflows.get("in").expect("in"),
+        0,
+        Part {
+            x: 1,
+            m: 1,
+            a: 1,
+            s: 1,
+        },
+        Part {
+            x: 4000,
+            m: 4000,
+            a: 4000,
+            s: 4000,
+        },
+    );
 
-    let style = ProgressStyle::default_bar()
-        .template(
-            "[{elapsed_precise}] {bar:40.cyan/blue} {eta} remaining [{human_pos}/{human_len}] - speed: {per_sec}",
-        )
-        .expect("valid style");
-
-    bar.set_style(style);
-
-    for x in 1..=4000 {
-        for m in 1..=4000 {
-            for a in 1..=4000 {
-                for s in 1..=4000 {
-                    let part = Part {
-                        x: Category::X(x),
-                        m: Category::M(m),
-                        a: Category::A(a),
-                        s: Category::S(s),
-                    };
-                    let mut current_workflow = workflows.get("in").expect("valid workflow name");
-                    let mut current_rule_index = 0;
-
-                    loop {
-                        let rule = current_workflow
-                            .rules
-                            .get(current_rule_index)
-                            .expect("valid rule");
-                        match rule {
-                            Rule::Decision(decision) => match decision {
-                                Decision::Accept => {
-                                    combinations += 1;
-                                    break;
-                                }
-                                Decision::Reject => break,
-                                Decision::SendTo(workflow_name) => {
-                                    current_workflow =
-                                        workflows.get(workflow_name).expect("valid workflow name");
-                                    current_rule_index = 0;
-                                }
-                            },
-
-                            Rule::Condition(category, operator, decision) => {
-                                let value = match category {
-                                    Category::X(value) => *value,
-                                    Category::M(value) => *value,
-                                    Category::A(value) => *value,
-                                    Category::S(value) => *value,
-                                };
-                                let part_value = match category {
-                                    Category::X(_) => part.x.value(),
-                                    Category::M(_) => part.m.value(),
-                                    Category::A(_) => part.a.value(),
-                                    Category::S(_) => part.s.value(),
-                                };
-                                if part_value.cmp(&value) == *operator {
-                                    match decision {
-                                        Decision::Accept => {
-                                            combinations += 1;
-                                            break;
-                                        }
-                                        Decision::Reject => break,
-                                        Decision::SendTo(workflow_name) => {
-                                            current_workflow = workflows
-                                                .get(workflow_name)
-                                                .expect("valid workflow name");
-                                            current_rule_index = 0;
-                                        }
-                                    };
-                                } else {
-                                    current_rule_index += 1;
-                                }
-                            }
-                        }
-                    }
-
-                    bar.inc(1);
-                }
-            }
-        }
-    }
-    bar.finish();
     combinations
 }
 
@@ -278,6 +311,6 @@ mod tests {
 
     #[test]
     fn example() {
-        assert_eq!(part2(include_str!("example.txt")), 19114);
+        assert_eq!(part2(include_str!("example.txt")), 167409079868000);
     }
 }
